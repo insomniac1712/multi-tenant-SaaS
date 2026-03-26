@@ -9,8 +9,29 @@ class OrganizationSerializer(serializers.ModelSerializer):
 
 class MembershipSerializer(serializers.ModelSerializer):
     user_email = serializers.EmailField(source="user.email", read_only=True)
+    username = serializers.CharField(source="user.username", read_only=True)
     
     class Meta:
         model = Membership
-        fields = ["id", "organization", "user", "user_email", "role", "is_active", "joined_at"]
-        read_only_fields = ["id", "joined_at", "user_email"]
+        fields = [
+            "id",
+            "organization",
+            "user",
+            "user_email",
+            "username",
+            "role",
+            "is_active",
+            "joined_at",
+        ]
+        read_only_fields = ["id", "organization", "user", "user_email", "username", "joined_at"]
+
+
+class MembershipRoleUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Membership
+        fields = ["role"]
+
+    def validate_role(self, value):
+        if value == Membership.Role.OWNER:
+            raise serializers.ValidationError("Use ownership transfer flow to set owner role.")
+        return value
