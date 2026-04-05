@@ -1,18 +1,31 @@
 # Multi-Tenant SaaS Backend
 
-A Django REST API backend for multi-tenant SaaS use cases.
+A production-style Django REST backend that models real SaaS collaboration workflows with organization-level tenancy, role-based permissions, and containerized deployment.
 
-## What this project includes
+## Recruiter Highlights
 
-- JWT authentication (register, login, refresh)
-- Organization-based multi-tenancy
-- Membership roles (owner, admin, member)
-- Invitation flow (create, accept, decline)
-- Project management per organization
-- Task management per project
-- Role-based access control and tenant scoping
-- OpenAPI schema + Swagger docs
-- PostgreSQL + Docker Compose setup
+- Multi-tenant architecture with strict org-level data isolation.
+- JWT authentication with refresh flow.
+- Role-based access control (owner, admin, member).
+- Invitation workflow with token-based accept/decline endpoints.
+- Project and task management with tenant-aware route scoping.
+- Dockerized local environment with PostgreSQL.
+- OpenAPI schema and interactive Swagger documentation.
+
+## Architecture Snapshot
+
+```text
+Client (Web/Postman/Swagger)
+		|
+		v
+	Django REST API
+		|
+		v
+	 PostgreSQL DB
+
+Tenant boundary: Organization
+Resource hierarchy: Organization -> Project -> Task
+```
 
 ## Tech stack
 
@@ -23,13 +36,22 @@ A Django REST API backend for multi-tenant SaaS use cases.
 - drf-spectacular (OpenAPI/Swagger)
 - Docker + Docker Compose
 
-## Project structure
+## Core modules
 
-- `accounts/` authentication and user model
-- `orgs/` organizations, memberships, invitations
-- `projects/` org-scoped projects
-- `tasks/` project-scoped tasks
-- `core/` settings, URL routing, ASGI/WSGI
+- `accounts`: custom user model, registration, JWT login/refresh
+- `orgs`: organizations, memberships, invitations, role policies
+- `projects`: organization-scoped project CRUD
+- `tasks`: project-scoped task CRUD with role-aware update/delete rules
+- `core`: settings, URL routing, shared framework configuration
+
+## Key API capabilities
+
+- Auth: register, login, refresh token
+- Org management: create/list organizations
+- Membership controls: list, role update, soft remove
+- Invitations: create, accept, decline
+- Projects: list/create/detail/update/delete under org routes
+- Tasks: list/create/detail/update/delete under org + project routes
 
 ## API docs
 
@@ -112,13 +134,13 @@ docker compose exec web python manage.py migrate
 docker compose exec web python manage.py createsuperuser
 ```
 
-## Current permission model (high level)
+## Permission model (high level)
 
-- Auth required for API access by default.
-- Tenant isolation is enforced by organization membership checks.
-- Projects are scoped under org IDs.
-- Tasks are scoped under org + project IDs.
-- Admin/owner have elevated write access in organization contexts.
+- API access requires authentication by default.
+- Tenant isolation is enforced through organization membership checks.
+- Project data is scoped by `org_id` routes.
+- Task data is scoped by `org_id + project_id` routes.
+- Elevated write operations are controlled by org role (admin/owner).
 
 ## Typical development flow
 
@@ -127,6 +149,14 @@ docker compose exec web python manage.py createsuperuser
 3. Register users and obtain JWT tokens.
 4. Create organization and memberships/invitations.
 5. Create projects and tasks under organization paths.
+
+## Resume-ready bullets
+
+- Built a multi-tenant SaaS backend using Django REST Framework and PostgreSQL with organization-scoped data isolation.
+- Implemented JWT-based authentication and role-based authorization (owner/admin/member) for secure access control.
+- Designed invitation and membership workflows with token-based onboarding and policy-driven permissions.
+- Developed project/task APIs with nested tenant-aware routing and filter/search/order support.
+- Containerized the application using Docker Compose for reproducible local setup and deployment readiness.
 
 ## Notes
 
