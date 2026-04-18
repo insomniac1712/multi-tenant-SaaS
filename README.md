@@ -1,72 +1,125 @@
 # Multi-Tenant SaaS Backend
 
-A production-style Django REST backend that models real SaaS collaboration workflows with organization-level tenancy, role-based permissions, and containerized deployment.
+Backend API for a multi-tenant SaaS application built with Django REST Framework.
+The tenant boundary is Organization, and resources are scoped as Organization -> Project -> Task.
 
-## Recruiter Highlights
+## Current Project Status
 
-- Multi-tenant architecture with strict org-level data isolation.
-- JWT authentication with refresh flow.
-- Role-based access control (owner, admin, member).
-- Invitation workflow with token-based accept/decline endpoints.
-- Project and task management with tenant-aware route scoping.
-- Dockerized local environment with PostgreSQL.
-- OpenAPI schema and interactive Swagger documentation.
+This project currently includes:
 
-## Architecture Snapshot
+- Authentication with JWT (register, login, refresh)
+- Custom user model
+- Organization management
+- Membership and role-based access (owner, admin, member)
+- Invitation flow (create, accept, decline)
+- Organization-scoped Project CRUD
+- Project-scoped Task CRUD
+- Task soft delete support
+- API documentation with Swagger/OpenAPI
+- Dockerized development setup with PostgreSQL
+- Initial smoke tests for critical task and permission flows
 
-```text
-Client (Web/Postman/Swagger)
-		|
-		v
-	Django REST API
-		|
-		v
-	 PostgreSQL DB
-
-Tenant boundary: Organization
-Resource hierarchy: Organization -> Project -> Task
-```
-
-## Tech stack
+## Tech Stack
 
 - Python 3.13
 - Django 4.2
 - Django REST Framework
 - PostgreSQL
-- drf-spectacular (OpenAPI/Swagger)
-- Docker + Docker Compose
+- djangorestframework-simplejwt
+- django-filter
+- drf-spectacular
+- Docker and Docker Compose
 
-## Core modules
+## API Route Groups
 
-- `accounts`: custom user model, registration, JWT login/refresh
-- `orgs`: organizations, memberships, invitations, role policies
-- `projects`: organization-scoped project CRUD
-- `tasks`: project-scoped task CRUD with role-aware update/delete rules
-- `core`: settings, URL routing, shared framework configuration
+Base prefix: /api/
 
-## Key API capabilities
+### Auth
 
-- Auth: register, login, refresh token
-- Org management: create/list organizations
-- Membership controls: list, role update, soft remove
-- Invitations: create, accept, decline
-- Projects: list/create/detail/update/delete under org routes
-- Tasks: list/create/detail/update/delete under org + project routes
+- POST /api/auth/register/
+- POST /api/auth/login/
+- POST /api/auth/refresh/
 
-## API docs
+### Organizations
 
-When server is running:
+- GET /api/orgs/
+- POST /api/orgs/
+- GET /api/orgs/{org_id}/members/
+- PATCH /api/orgs/{org_id}/members/{membership_id}/
+- DELETE /api/orgs/{org_id}/members/{membership_id}/
+- GET /api/orgs/{org_id}/invitations/
+- POST /api/orgs/{org_id}/invitations/
+- POST /api/orgs/invitations/{token}/accept/
+- POST /api/orgs/invitations/{token}/decline/
 
-- Swagger UI: `http://localhost:8000/api/docs/`
-- OpenAPI schema: `http://localhost:8000/api/schema/`
+### Projects
 
-Note: root URL (`/`) is not mapped and returns 404 by design.
+- GET /api/orgs/{org_id}/projects/
+- POST /api/orgs/{org_id}/projects/
+- GET /api/orgs/{org_id}/projects/{project_id}/
+- PATCH /api/orgs/{org_id}/projects/{project_id}/
+- PUT /api/orgs/{org_id}/projects/{project_id}/
+- DELETE /api/orgs/{org_id}/projects/{project_id}/
 
-## Environment variables
+### Tasks
 
-Create `.env` in project root.
+- GET /api/orgs/{org_id}/projects/{project_id}/tasks/
+- POST /api/orgs/{org_id}/projects/{project_id}/tasks/
+- GET /api/orgs/{org_id}/projects/{project_id}/tasks/{task_id}/
+- PATCH /api/orgs/{org_id}/projects/{project_id}/tasks/{task_id}/
+- PUT /api/orgs/{org_id}/projects/{project_id}/tasks/{task_id}/
+- DELETE /api/orgs/{org_id}/projects/{project_id}/tasks/{task_id}/
 
-Example:
+### API Docs
+
+- GET /api/docs/
+- GET /api/schema/
+
+## Local Setup
+
+1. Create and activate a virtual environment.
+2. Install dependencies.
+3. Create .env using .env.example.
+4. Run migrations.
+5. Start the server.
+
+```bash
+pip install -r requirements.txt
+python manage.py migrate
+python manage.py runserver
+```
+
+## Docker Setup
+
+Build and run:
+
+```bash
+docker compose up --build
+```
+
+Stop containers:
+
+```bash
+docker compose down
+```
+
+Stop and remove DB volume data:
+
+```bash
+docker compose down -v
+```
+
+Run management commands inside the web container:
+
+```bash
+docker compose exec web python manage.py makemigrations
+docker compose exec web python manage.py migrate
+docker compose exec web python manage.py createsuperuser
+```
+
+## Environment Variables
+
+Create .env in the project root.
 
 ```env
 DEBUG=True
@@ -83,82 +136,50 @@ JWT_ACCESS_MINUTES=15
 JWT_REFRESH_DAYS=7
 ```
 
-For Docker runs, `POSTGRES_HOST` is overridden to `db` in `docker-compose.yaml`.
+Notes:
 
-## Run locally (without Docker)
+- In Docker, POSTGRES_HOST is overridden to db.
+- Use a sufficiently long SECRET_KEY to avoid JWT key length warnings.
 
-1. Create and activate virtual environment.
-2. Install dependencies:
+## Running Tests
 
-```bash
-pip install -r requirements.txt
-```
-
-3. Run migrations:
+Run all tests:
 
 ```bash
-python manage.py migrate
+python manage.py test
 ```
 
-4. Start server:
+Run tests in Docker:
 
 ```bash
-python manage.py runserver
+docker compose exec web python manage.py test
 ```
 
-## Run with Docker
+## Access URLs
 
-Build and start:
+- API base: http://localhost:8000
+- Swagger UI: http://localhost:8000/api/docs/
+- OpenAPI schema: http://localhost:8000/api/schema/
+- Django Admin: http://localhost:8000/admin/
 
-```bash
-docker compose up --build
-```
+## Permission Model (Current)
 
-Stop without deleting data:
+- Authenticated access by default
+- Tenant isolation enforced through organization membership checks
+- Project endpoints scoped by org_id
+- Task endpoints scoped by org_id plus project_id
+- Elevated actions controlled by role (admin or owner)
 
-```bash
-docker compose down
-```
+## Current Limitations
 
-Stop and delete DB volume data:
+- Root path / is not mapped (returns 404 by design)
+- Invitation delivery is API-only (email sending not integrated yet)
+- Coverage is currently smoke-test level, not full module-level coverage
+- Production hardening (CI, security profiles, ops tooling) is not finalized
 
-```bash
-docker compose down -v
-```
+## Next Steps
 
-Run Django commands inside container:
-
-```bash
-docker compose exec web python manage.py makemigrations
-docker compose exec web python manage.py migrate
-docker compose exec web python manage.py createsuperuser
-```
-
-## Permission model (high level)
-
-- API access requires authentication by default.
-- Tenant isolation is enforced through organization membership checks.
-- Project data is scoped by `org_id` routes.
-- Task data is scoped by `org_id + project_id` routes.
-- Elevated write operations are controlled by org role (admin/owner).
-
-## Typical development flow
-
-1. Bring up services (`docker compose up --build`).
-2. Open API docs at `/api/docs/`.
-3. Register users and obtain JWT tokens.
-4. Create organization and memberships/invitations.
-5. Create projects and tasks under organization paths.
-
-## Resume-ready bullets
-
-- Built a multi-tenant SaaS backend using Django REST Framework and PostgreSQL with organization-scoped data isolation.
-- Implemented JWT-based authentication and role-based authorization (owner/admin/member) for secure access control.
-- Designed invitation and membership workflows with token-based onboarding and policy-driven permissions.
-- Developed project/task APIs with nested tenant-aware routing and filter/search/order support.
-- Containerized the application using Docker Compose for reproducible local setup and deployment readiness.
-
-## Notes
-
-- Keep secrets out of source control (`.env` is ignored).
-- Use `.env.example` as a template for collaborators.
+- Expand automated tests across auth, orgs, projects, and tasks
+- Add invitation email sending workflow
+- Improve production settings split and security defaults
+- Add CI pipeline for lint and test checks
